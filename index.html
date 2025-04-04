@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Biblioteca Tulua - FastAPI</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #faf3e0;
+      color: #4e342e;
+      margin: 0;
+      padding: 20px;
+      background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
+    }
+
+    h1, h2 {
+      font-family: 'Georgia', serif;
+      color: #6d4c41;
+      text-align: center;
+    }
+
+    form {
+      background-color: #fbe9e7;
+      padding: 15px;
+      border-radius: 10px;
+      max-width: 400px;
+      margin: 0 auto 20px auto;
+      box-shadow: 2px 2px 6px #ccc;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #a1887f;
+      border-radius: 5px;
+    }
+
+    input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-bottom: 10px;
+    }
+
+    button {
+      background-color: #8d6e63;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-left: 5px;
+    }
+
+    button:hover {
+      background-color: #6d4c41;
+    }
+
+    #listaLibros {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0;
+    }
+
+    #listaLibros li {
+      background-color: #efebe9;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      box-shadow: 1px 1px 4px #ccc;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #listaLibros button {
+      background-color: #d84315;
+    }
+
+    #listaLibros button:hover {
+      background-color: #bf360c;
+    }
+  </style>
+</head>
+<body>
+  <h1>📚 Biblioteca Tulua</h1>
+
+  <h2>Agregar o editar libro</h2>
+  <form id="formLibro">
+    <label>ID:</label>
+    <input type="number" id="id" required readonly>
+
+    <label>Título:</label>
+    <input type="text" id="titulo" required>
+
+    <label>Autor:</label>
+    <input type="text" id="autor" required>
+
+    <label>Disponible:</label>
+    <input type="checkbox" id="disponible" checked>
+
+    <br><br>
+    <button type="submit">➕ Agregar</button>
+  </form>
+
+  <h2>Catálogo actual</h2>
+  <div style="text-align: center;">
+    <button onclick="cargarLibros()">🔄 Actualizar lista</button>
+  </div>
+  <ul id="listaLibros"></ul>
+
+  <script>
+    const API_URL = "http://127.0.0.1:8000/items/";
+    let libroEditando = null;
+
+    document.getElementById("formLibro").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const libro = {
+        id: parseInt(document.getElementById("id").value),
+        titulo: document.getElementById("titulo").value,
+        autor: document.getElementById("autor").value,
+        disponible: document.getElementById("disponible").checked
+      };
+
+      const method = libroEditando ? "PUT" : "POST";
+      const url = libroEditando ? API_URL + libro.id : API_URL;
+
+      const res = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(libro)
+      });
+
+      if (res.ok) {
+        alert(libroEditando ? "Libro actualizado" : "Libro agregado");
+        libroEditando = null;
+        resetFormulario();
+        cargarLibros();
+      } else {
+        alert("Error en la operación");
+      }
+    });
+
+    async function cargarLibros() {
+      const res = await fetch(API_URL);
+      const libros = await res.json();
+
+      const lista = document.getElementById("listaLibros");
+      lista.innerHTML = "";
+
+      libros.forEach(libro => {
+        const li = document.createElement("li");
+        li.textContent = `${libro.id}: ${libro.titulo} (${libro.autor}) - ${libro.disponible ? "✅" : "❌"}`;
+
+        // Botón Eliminar
+        const btnEliminar = document.createElement("button");
+        btnEliminar.textContent = "❌";
+        btnEliminar.onclick = async () => {
+          await fetch(API_URL + libro.id, { method: "DELETE" });
+          cargarLibros();
+        };
+
+        // Botón Editar
+        const btnEditar = document.createElement("button");
+        btnEditar.textContent = "✏️";
+        btnEditar.onclick = () => {
+          document.getElementById("id").value = libro.id;
+          document.getElementById("titulo").value = libro.titulo;
+          document.getElementById("autor").value = libro.autor;
+          document.getElementById("disponible").checked = libro.disponible;
+
+          document.getElementById("id").readOnly = true;
+          libroEditando = libro;
+          document.querySelector("#formLibro button").textContent = "🔄 Actualizar";
+        };
+
+        li.appendChild(btnEditar);
+        li.appendChild(btnEliminar);
+        lista.appendChild(li);
+      });
+
+      // Sugerir nuevo ID si no estamos editando
+      if (!libroEditando && libros.length > 0) {
+        const maxId = Math.max(...libros.map(l => l.id));
+        document.getElementById("id").value = maxId + 1;
+      } else if (!libroEditando && libros.length === 0) {
+        document.getElementById("id").value = 1;
+      }
+    }
+
+    function resetFormulario() {
+      const form = document.getElementById("formLibro");
+      form.reset();
+      document.getElementById("id").readOnly = false;
+      document.querySelector("#formLibro button").textContent = "➕ Agregar";
+      libroEditando = null;
+
+      // Sugerencia automática de ID
+      cargarLibros();
+    }
+
+    cargarLibros();
+  </script>
+</body>
+</html>
