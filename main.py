@@ -64,3 +64,8 @@ def eliminar_libro(id: int):
 @app.get("/")
 def raiz():
     return {"mensaje": "¡Bienvenido a la API de la Biblioteca!"}
+
+# 🔥 Esta parte es crucial para Railway
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8080)
